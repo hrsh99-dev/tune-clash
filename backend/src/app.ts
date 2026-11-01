@@ -45,6 +45,18 @@ export function createApp(): Express {
     next();
   });
 
+  // Root server status
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      name: 'Tune Clash Game Server',
+      status: 'online',
+      version: '1.0.0',
+      health: '/api/health',
+      catalog: '/api/catalog',
+      message: 'This is the WebSocket & API backend. Visit your Vercel frontend URL to play the game!',
+    });
+  });
+
   // Mount API routes
   app.use('/api', healthRouter);
   app.use('/api/catalog', catalogRouter);
