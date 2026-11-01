@@ -210,7 +210,7 @@ async function main() {
   console.log(`========================================\n`);
 
   // Target output path
-  const targetDir = path.resolve(__dirname, '../apps/server/src/data');
+  const targetDir = path.resolve(__dirname, '../backend/src/data');
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }

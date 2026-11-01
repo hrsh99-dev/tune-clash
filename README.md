@@ -74,27 +74,16 @@ Open your browser at `http://localhost:3000` to play!
 
 ---
 
-## 🧪 Testing & Validation
-
-Run all unit and integration test suites:
-```bash
-npm run test
-```
-
-Or run tests per workspace:
-- **Shared Package Tests (18 tests)**: `npm run test --workspace=@tune-clash/shared`
-  - Verifies answer normalization, diacritics stripping, Devanagari retention, scoring speed bonuses, streaks, modifiers, and tie-breakers.
-- **Server API & Engine Tests (8 tests)**: `npm run test --workspace=@tune-clash/server`
-  - Verifies `/api/health`, room creation, room join, nickname uniqueness, secrecy of answers, and admin rights verification.
-
----
-
 ## 🛠️ Production Build
 
-To build all packages for production:
+To build both packages:
 ```bash
 npm run build
 ```
+
+Or build individually:
+- Backend: `npm run build:backend`
+- Frontend: `npm run build:frontend`
 
 ---
 
@@ -102,23 +91,22 @@ npm run build
 
 ```text
 /
-├── apps/
-│   ├── web/                 # Next.js 14 App Router frontend with Tailwind CSS
-│   │   ├── src/app/         # Routes: / (Landing), /room/[code] (Game), /admin (Catalog)
-│   │   └── src/components/  # AudioPlayer, Leaderboard, Countdown, AnswerInput, Podium
-│   └── server/              # Node.js + Express + Socket.IO authoritative server
-│       ├── src/game/        # GameManager authoritative multiplayer state machine
-│       ├── src/models/      # Mongoose schemas: Track, License, Asset, Room, Session
-│       ├── src/routes/      # API routers: health, rooms, catalog, admin, assets
-│       └── src/storage/     # Local audio storage provider with opaque UUID keys
-├── packages/
-│   └── shared/              # Shared Zod schemas, scoring engine, normalizer, contracts
-├── scripts/
-│   └── generate-demo-audio.js # Pure JavaScript algorithmic 44.1kHz WAV synthesizer
+├── frontend/                # Next.js 14 App Router frontend (Deploy on Vercel)
+│   ├── src/app/             # Routes: / (Landing), /room/[code] (Game), /admin (Catalog)
+│   ├── src/components/      # AudioPlayer, Leaderboard, Countdown, AnswerInput, Podium
+│   └── src/shared/          # Self-contained game contracts, types, and events
+├── backend/                 # Node.js + Express + Socket.IO server (Deploy on Render/Railway)
+│   ├── src/game/            # GameManager authoritative multiplayer state machine
+│   ├── src/models/          # Mongoose schemas: Track, License, Asset, Room, Session
+│   ├── src/routes/          # API routers: health, rooms, catalog, admin, assets
+│   ├── src/shared/          # Server contracts, scoring engine, normalizer, and schemas
+│   └── src/storage/         # Local audio storage provider with opaque UUID keys
+├── scripts/                 # Audio synthesizer and verification test scripts
 ├── docs/
 │   ├── architecture.md      # Architecture, state machines, and timing models
 │   ├── implementation-notes.md # Key technical decisions and rationale
-│   └── testing.md           # Automated test suites and verification checklists
+│   └── testing.md           # Verification checklists
+├── DEPLOYMENT.md            # Step-by-step Vercel & Render/Railway deployment guide
 ├── docker-compose.yml       # Optional local MongoDB container
 ├── .env.example             # Example environment variables template
 └── README.md

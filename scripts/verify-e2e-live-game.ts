@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { SOCKET_EVENTS, HintVoteUpdatePayload } from '@tune-clash/shared';
+import { SOCKET_EVENTS, HintVoteUpdatePayload } from '../backend/src/shared/index.js';
 
 const SERVER_URL = 'http://localhost:4000';
 

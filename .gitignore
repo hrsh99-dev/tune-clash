@@ -5,8 +5,10 @@ node_modules/
 
 # Build outputs
 dist/
+backend/dist/
 build/
 .next/
+frontend/.next/
 out/
 *.tsbuildinfo
 
@@ -18,6 +20,8 @@ out/
 .env.production.local
 
 # Temporary / runtime uploads
+uploads/
+backend/uploads/
 apps/server/uploads/
 
 # Testing & Coverage
@@ -40,3 +44,5 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+apps/
+packages/
