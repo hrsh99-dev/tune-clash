@@ -263,10 +263,10 @@ export class GameManager {
     }
 
     const connectedPlayers = room.players.filter((p) => p.isConnected);
-    if (connectedPlayers.length < 2) {
+    if (connectedPlayers.length < 1) {
       socket.emit(SOCKET_EVENTS.SERVER_ROOM_ERROR, {
         code: 'NOT_ENOUGH_PLAYERS',
-        message: 'At least 2 connected players are required to start the game.',
+        message: 'At least 1 player is required to start the game.',
       });
       return;
     }
@@ -402,14 +402,16 @@ export class GameManager {
       }
     }
 
-    // 20-second input time for guessing and voting
-    const windowMs = modifier === 'Lightning' ? 12000 : 20000;
+    // Guessing window duration based on clipSeconds setting
+    const clipSec = room.settings?.clipSeconds || 8;
+    const windowMs = modifier === 'Lightning' ? (clipSec + 4) * 1000 : (clipSec + 12) * 1000;
     const startAt = Date.now() + 2000; // 2 seconds future sync
     const answerDeadlineAt = startAt + windowMs;
     const roundId = `rnd_${crypto.randomBytes(6).toString('hex')}`;
 
     const audioAsset = track.audioAssetId as any;
-    const audioUrl = `/api/assets/audio/${audioAsset.storageKey}`;
+    const audioUrl = audioAsset?.externalUrl || `/api/assets/audio/${audioAsset?.storageKey}`;
+    const clipDurationMs = clipSec * 1000;
     const cue = generateTitleCue(track.title);
 
     const connectedCount = Math.max(1, room.players.filter((p) => p.isConnected).length);
@@ -439,9 +441,11 @@ export class GameManager {
       roundNumber,
       totalRounds,
       audioUrl,
-      clipDurationMs: (room.settings.clipSeconds || 8) * 1000,
+      clipDurationMs,
       startAt,
       answerDeadlineAt,
+      windowMs,
+      serverTime: Date.now(),
       filtersSummary: {
         category: track.categories?.[0],
         language: track.languages?.[0],
@@ -465,6 +469,8 @@ export class GameManager {
         this.io.to(roomCode).emit(SOCKET_EVENTS.SERVER_ROUND_PLAY, {
           roundId,
           startAt: activeRound.startAt,
+          windowMs: activeRound.windowMs,
+          serverTime: Date.now(),
         });
       }
     }, Math.max(0, startAt - Date.now()));

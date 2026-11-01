@@ -326,6 +326,7 @@ export default function RoomPage() {
   const me = players.find((p) => p.playerId === playerId);
 
   const toggleReady = () => {
+    unlockAudio();
     if (!socketRef.current || !me || isHost) return;
     socketRef.current.emit(SOCKET_EVENTS.CLIENT_READY_SET, { ready: !me.isReady });
   };
@@ -337,7 +338,21 @@ export default function RoomPage() {
     socketRef.current.emit(SOCKET_EVENTS.CLIENT_SETTINGS_UPDATE, newSettings);
   };
 
+
+  const unlockAudio = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+      }
+    } catch (e) {}
+  };
+
   const handleStartGame = () => {
+    unlockAudio();
     if (!socketRef.current || !isHost) return;
     socketRef.current.emit(SOCKET_EVENTS.CLIENT_GAME_START);
   };
@@ -396,7 +411,7 @@ export default function RoomPage() {
   // Check start readiness
   const connectedPlayers = players.filter((p) => p.isConnected);
   const allNonHostReady = connectedPlayers.filter((p) => !p.isHost).every((p) => p.isReady);
-  const canStart = isHost && connectedPlayers.length >= 2 && allNonHostReady;
+  const canStart = isHost && connectedPlayers.length >= 1 && allNonHostReady;
 
   // Leaderboard data mapping: Preserve scores across all rounds until game completes!
   const leaderboardEntries: PlayerLeaderboardEntry[] = (accumulatedLeaderboard.length > 0
@@ -629,6 +644,8 @@ export default function RoomPage() {
                     <RoundCountdown
                       startAt={roundPrepare.startAt}
                       deadlineAt={roundPrepare.answerDeadlineAt}
+                      windowMs={roundPrepare.windowMs}
+                      serverTime={roundPrepare.serverTime}
                     />
                   )}
 
@@ -637,6 +654,7 @@ export default function RoomPage() {
                     audioUrl={roundPrepare?.audioUrl}
                     startAt={roundPrepare?.startAt}
                     isPlaying={isRoundPlaying}
+                    clipDurationMs={roundPrepare?.clipDurationMs}
                   />
 
                   {/* Hint Vote Bar: Only visible if hint not yet revealed and player hasn't guessed correctly */}

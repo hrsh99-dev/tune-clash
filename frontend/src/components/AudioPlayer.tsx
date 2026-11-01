@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, AlertTriangle, Disc, Play, RotateCcw, Radio } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Volume2, VolumeX, AlertTriangle, Disc, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { getApiBase } from '@/lib/apiConfig';
 
 interface AudioPlayerProps {
@@ -9,19 +9,62 @@ interface AudioPlayerProps {
   startAt?: number;
   isPlaying: boolean;
   onAudioReady?: () => void;
+  clipDurationMs?: number;
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   audioUrl,
-  startAt,
   isPlaying,
   onAudioReady,
+  clipDurationMs = 8000,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const clipTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [isMuted, setIsMuted] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isActuallyPlaying, setIsActuallyPlaying] = useState(false);
+
+  // Clear any existing clip cutoff timer
+  const clearClipTimer = () => {
+    if (clipTimerRef.current) {
+      clearTimeout(clipTimerRef.current);
+      clipTimerRef.current = null;
+    }
+  };
+
+  // Safely start audio playback and schedule cutoff after clipDurationMs
+  const startPlayback = useCallback(() => {
+    if (!audioRef.current) return;
+    const audio = audioRef.current;
+
+    clearClipTimer();
+    audio.currentTime = 0;
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setIsActuallyPlaying(true);
+          setAutoplayBlocked(false);
+          setAudioError(null);
+
+          // Stop playback once clipDurationMs has elapsed
+          clipTimerRef.current = setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.pause();
+              setIsActuallyPlaying(false);
+            }
+          }, clipDurationMs);
+        })
+        .catch((err) => {
+          console.warn('Autoplay blocked by browser policy:', err);
+          setAutoplayBlocked(true);
+          setIsActuallyPlaying(false);
+        });
+    }
+  }, [clipDurationMs]);
 
   // Initialize and load audio when URL changes
   useEffect(() => {
@@ -30,6 +73,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setAudioError(null);
     setAutoplayBlocked(false);
     setIsActuallyPlaying(false);
+    clearClipTimer();
 
     const apiBase = getApiBase();
     const fullUrl = audioUrl.startsWith('http')
@@ -43,16 +87,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const audio = audioRef.current;
     audio.src = fullUrl;
     audio.preload = 'auto';
+    audio.load();
 
     const handleCanPlay = () => {
       onAudioReady?.();
     };
 
     const handleError = () => {
-      setAudioError('Failed to load audio clip. Please check your network connection.');
+      setAudioError('Failed to stream audio clip. Tap Retry to reload.');
     };
 
     const handleEnded = () => {
+      clearClipTimer();
       setIsActuallyPlaying(false);
     };
 
@@ -70,39 +116,32 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener('canplaythrough', handleCanPlay);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('ended', handleEnded);
+      clearClipTimer();
       audio.pause();
     };
-  }, [audioUrl]);
+  }, [audioUrl, onAudioReady]);
 
-  // Handle synchronization and playback based on startAt & isPlaying
+  // Synchronize playback when isPlaying flips to true/false:
+  // Immediate playback on isPlaying without clock-skew delay
   useEffect(() => {
-    if (!isPlaying || !audioRef.current || audioError) return;
+    if (!audioRef.current) return;
 
-    const audio = audioRef.current;
-    const now = Date.now();
-    const delay = startAt ? Math.max(0, startAt - now) : 0;
-
-    const timer = setTimeout(() => {
-      audio.currentTime = 0;
-      audio
-        .play()
-        .then(() => {
-          setIsActuallyPlaying(true);
-          setAutoplayBlocked(false);
-        })
-        .catch((err) => {
-          console.warn('Autoplay blocked by browser policy:', err);
-          setAutoplayBlocked(true);
-          setIsActuallyPlaying(false);
-        });
-    }, delay);
+    if (isPlaying) {
+      startPlayback();
+    } else {
+      clearClipTimer();
+      audioRef.current.pause();
+      setIsActuallyPlaying(false);
+    }
 
     return () => {
-      clearTimeout(timer);
-      audio.pause();
+      clearClipTimer();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       setIsActuallyPlaying(false);
     };
-  }, [isPlaying, startAt, audioUrl]);
+  }, [isPlaying, startPlayback]);
 
   const toggleMute = () => {
     if (audioRef.current) {
@@ -112,48 +151,32 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   };
 
   const handleManualUnlock = () => {
-    if (audioRef.current) {
-      audioRef.current
-        .play()
-        .then(() => {
-          setIsActuallyPlaying(true);
-          setAutoplayBlocked(false);
-        })
-        .catch((err) => {
-          setAudioError('Could not start audio playback: ' + err.message);
-        });
-    }
+    if (!audioRef.current) return;
+    // Direct user click unlocks audio playback in the browser
+    startPlayback();
   };
 
   const handleReplay = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current
-        .play()
-        .then(() => {
-          setIsActuallyPlaying(true);
-          setAutoplayBlocked(false);
-        })
-        .catch((err) => {
-          console.warn('Replay blocked or failed:', err);
-        });
-    }
+    if (!isPlaying) return;
+    startPlayback();
   };
+
+  const clipSeconds = Math.round(clipDurationMs / 1000);
 
   return (
     <div className="w-full flex flex-col items-center justify-center p-2 sm:p-4">
       {/* Autoplay blocked permission banner */}
       {autoplayBlocked && (
-        <div className="w-full max-w-md bg-neo-yellow border-2 border-black rounded-xl p-3 mb-4 flex items-center justify-between gap-3 text-black shadow-neo-sm animate-bounce">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+        <div className="w-full max-w-md bg-neo-yellow border-2 border-black rounded-xl p-3 mb-4 flex items-center justify-between gap-3 text-black shadow-neo animate-bounce">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-black">
             <AlertTriangle className="w-5 h-5 text-black shrink-0" />
-            <span>Sound is blocked by your browser!</span>
+            <span>Browser blocked audio! Tap Enable Sound:</span>
           </div>
           <button
             onClick={handleManualUnlock}
-            className="px-3 py-1.5 bg-black text-neo-yellow text-xs font-black uppercase rounded-lg border-2 border-black flex items-center gap-1 shrink-0 shadow-neo-sm hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none"
+            className="px-3.5 py-2 bg-black text-neo-yellow text-xs font-black uppercase rounded-lg border-2 border-black flex items-center gap-1.5 shrink-0 shadow-neo-sm hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
           >
-            <Play className="w-3.5 h-3.5 fill-current" /> Enable Sound
+            <Play className="w-4 h-4 fill-current" /> Enable Sound
           </button>
         </div>
       )}
@@ -176,9 +199,13 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         {/* Top Status Strip */}
         <div className="w-full flex items-center justify-between border-b-2 border-black pb-3">
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full border border-black ${isActuallyPlaying ? 'bg-neo-green animate-ping' : 'bg-neutral-300'}`} />
+            <div
+              className={`w-3 h-3 rounded-full border border-black ${
+                isActuallyPlaying ? 'bg-neo-green animate-ping' : 'bg-neutral-300'
+              }`}
+            />
             <span className="font-mono text-xs font-black uppercase tracking-wider text-black">
-              {isActuallyPlaying ? 'AUDIO LIVE' : '8-SECOND CLIP'}
+              {isActuallyPlaying ? 'AUDIO LIVE 🎶' : `${clipSeconds}-SECOND CLIP`}
             </span>
           </div>
           <span className="font-mono text-[11px] font-bold uppercase bg-neo-yellow px-2 py-0.5 rounded border border-black">
@@ -186,8 +213,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </span>
         </div>
 
-        {/* Vinyl Disc with colorful grooved styling */}
-        <div className="relative my-2">
+        {/* Vinyl Disc with colorful grooved styling - Clickable to Play/Replay */}
+        <div
+          onClick={isPlaying ? handleReplay : undefined}
+          title={isPlaying ? 'Click to play or replay music clip' : undefined}
+          className={`relative my-2 select-none ${
+            isPlaying ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''
+          }`}
+        >
           <div
             className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-black border-[4px] border-black shadow-neo flex items-center justify-center transition-all ${
               isActuallyPlaying ? 'animate-spin-slow scale-105' : 'opacity-90'
@@ -206,8 +239,28 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
           {/* Tonearm graphic overlay */}
           <div className="absolute -top-3 -right-2 w-8 h-14 pointer-events-none select-none hidden sm:block">
-            <div className="w-2 h-12 bg-neutral-400 border border-black rounded-sm rotate-12 origin-top shadow-sm" />
+            <div
+              className={`w-2 h-12 bg-neutral-400 border border-black rounded-sm origin-top shadow-sm transition-transform duration-300 ${
+                isActuallyPlaying ? 'rotate-20' : 'rotate-12'
+              }`}
+            />
           </div>
+
+          {/* If autoplay is blocked, show a tap button directly over the vinyl */}
+          {autoplayBlocked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManualUnlock();
+                }}
+                className="px-4 py-2 bg-neo-yellow text-black border-2 border-black rounded-full font-black text-xs uppercase shadow-neo flex items-center gap-1.5 animate-pulse"
+              >
+                <Play className="w-4 h-4 fill-black stroke-black" />
+                <span>TAP TO PLAY</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Dynamic sound wave visualizer bars */}
@@ -235,7 +288,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             id="replay-clip-btn"
             onClick={handleReplay}
             disabled={!isPlaying}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-neo-cyan hover:bg-[#38BDF8] text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-neo-cyan hover:bg-[#38BDF8] text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             title="Replay this music clip"
           >
             <RotateCcw className="w-4 h-4 stroke-[2.5]" />
@@ -244,7 +297,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
           <button
             onClick={toggleMute}
-            className="p-2 bg-white text-black border-2 border-black rounded-xl hover:bg-neutral-100 shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+            className="p-2 bg-white text-black border-2 border-black rounded-xl hover:bg-neutral-100 shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
             aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
             title={isMuted ? 'Unmute' : 'Mute'}
           >

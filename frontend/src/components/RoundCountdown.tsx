@@ -1,47 +1,82 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Clock, Zap } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Clock } from 'lucide-react';
 
 interface RoundCountdownProps {
   startAt: number;
   deadlineAt: number;
+  serverTime?: number;
+  windowMs?: number;
   onDeadlineReached?: () => void;
 }
 
 export const RoundCountdown: React.FC<RoundCountdownProps> = ({
   startAt,
   deadlineAt,
+  serverTime,
+  windowMs,
   onDeadlineReached,
 }) => {
-  const [timeLeftMs, setTimeLeftMs] = useState<number>(Math.max(0, deadlineAt - Date.now()));
-  const totalWindowMs = Math.max(1000, deadlineAt - startAt);
+  // Total guessing window duration in ms: immune to client-server clock skew because both timestamps are from server
+  const totalDurationMs = Math.max(1000, windowMs || deadlineAt - startAt);
+
+  // Measure client monotonic start time from component mount
+  const mountPerfRef = useRef<number>(performance.now());
+  const initialClientNowRef = useRef<number>(Date.now());
+  const hasTriggeredDeadlineRef = useRef<boolean>(false);
+
+  // Compute exact remaining ms
+  const computeTimeRemaining = (): number => {
+    // 1. Monotonic elapsed time on client machine
+    const elapsedMonotonic = performance.now() - mountPerfRef.current;
+    const monotonicRemaining = Math.max(0, totalDurationMs - elapsedMonotonic);
+
+    // 2. Server time skew adjustment (if serverTime provided)
+    if (serverTime) {
+      // Offset between client clock and server clock at the moment the event arrived
+      const clockSkew = initialClientNowRef.current - serverTime;
+      const estimatedServerNow = Date.now() - clockSkew;
+      const serverRemaining = Math.max(0, deadlineAt - estimatedServerNow);
+      // Bound within [0, totalDurationMs] to prevent wild clock drift numbers
+      return Math.min(monotonicRemaining, serverRemaining);
+    }
+
+    return monotonicRemaining;
+  };
+
+  const [timeLeftMs, setTimeLeftMs] = useState<number>(computeTimeRemaining());
 
   useEffect(() => {
+    mountPerfRef.current = performance.now();
+    initialClientNowRef.current = Date.now();
+    hasTriggeredDeadlineRef.current = false;
+    setTimeLeftMs(computeTimeRemaining());
+
     const interval = setInterval(() => {
-      const now = Date.now();
-      const left = Math.max(0, deadlineAt - now);
+      const left = computeTimeRemaining();
       setTimeLeftMs(left);
 
-      if (left <= 0) {
+      if (left <= 0 && !hasTriggeredDeadlineRef.current) {
+        hasTriggeredDeadlineRef.current = true;
         clearInterval(interval);
         onDeadlineReached?.();
       }
-    }, 100);
+    }, 50);
 
     return () => clearInterval(interval);
-  }, [deadlineAt, onDeadlineReached]);
+  }, [deadlineAt, startAt, totalDurationMs, serverTime, onDeadlineReached]);
 
-  const progressPercent = Math.max(0, Math.min(100, (timeLeftMs / totalWindowMs) * 100));
+  const progressPercent = Math.max(0, Math.min(100, (timeLeftMs / totalDurationMs) * 100));
   const secondsDisplay = (timeLeftMs / 1000).toFixed(1);
 
   // Progressive color based on time remaining
   let barColor = 'bg-neo-green';
-  let badgeColor = 'bg-neo-green-light';
-  if (progressPercent < 30) {
+  let badgeColor = 'bg-neo-green-light text-black';
+  if (progressPercent < 25) {
     barColor = 'bg-neo-pink';
     badgeColor = 'bg-neo-pink-light text-black';
-  } else if (progressPercent < 60) {
+  } else if (progressPercent < 55) {
     barColor = 'bg-neo-yellow';
     badgeColor = 'bg-neo-yellow-light text-black';
   }
@@ -62,7 +97,7 @@ export const RoundCountdown: React.FC<RoundCountdownProps> = ({
 
       <div className="w-full h-4 bg-white rounded-full overflow-hidden border-2 border-black shadow-neo-sm p-0.5">
         <div
-          className={`h-full rounded-full border-r-2 border-black transition-all duration-100 ease-linear ${barColor}`}
+          className={`h-full rounded-full border-r-2 border-black transition-all duration-75 ease-linear ${barColor}`}
           style={{ width: `${progressPercent}%` }}
         />
       </div>

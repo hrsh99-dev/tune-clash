@@ -60,6 +60,8 @@ export interface PublicRoundPreparePayload {
   clipDurationMs: number;
   startAt: number;
   answerDeadlineAt: number;
+  windowMs?: number;
+  serverTime?: number;
   filtersSummary: {
     category?: string;
     language?: string;

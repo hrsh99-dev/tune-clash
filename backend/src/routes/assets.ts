@@ -15,68 +15,16 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 assetsRouter.get('/audio/:key', async (req: Request, res: Response): Promise<void> => {
   const { key } = req.params;
 
-  // 1. Check if it's an external stream asset
+  // 1. Check if it's an external stream asset - redirect directly to CDN
   try {
     const asset = await AudioAsset.findOne({ storageKey: key });
     if (asset && asset.storageProvider === 'external_stream' && asset.externalUrl) {
-      try {
-        let cached = previewCache.get(key);
-        const now = Date.now();
-        if (!cached || now - cached.cachedAt > CACHE_TTL_MS) {
-          const response = await fetch(asset.externalUrl);
-          if (!response.ok) {
-            res.status(502).json({ error: { code: 'PREVIEW_UNAVAILABLE', message: 'Could not stream preview audio' } });
-            return;
-          }
-          const arrayBuffer = await response.arrayBuffer();
-          cached = {
-            buffer: Buffer.from(arrayBuffer),
-            mimeType: asset.mimeType || 'audio/mp4',
-            cachedAt: now,
-          };
-          previewCache.set(key, cached);
-        }
-
-        const buffer = cached.buffer;
-        const fileSize = buffer.length;
-        const range = req.headers.range;
-        const contentType = cached.mimeType;
-
-        if (range) {
-          const parts = range.replace(/bytes=/, '').split('-');
-          const start = parseInt(parts[0], 10);
-          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-          if (start >= fileSize) {
-            res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize);
-            return;
-          }
-
-          const chunkSize = end - start + 1;
-          res.writeHead(206, {
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': chunkSize,
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=86400',
-          });
-          res.end(buffer.subarray(start, end + 1));
-          return;
-        } else {
-          res.writeHead(200, {
-            'Content-Length': fileSize,
-            'Content-Type': contentType,
-            'Accept-Ranges': 'bytes',
-            'Cache-Control': 'public, max-age=86400',
-          });
-          res.end(buffer);
-          return;
-        }
-      } catch (err: any) {
-        logger.error('Failed to proxy external audio preview', { error: err.message, storageKey: key });
-      }
+      res.redirect(302, asset.externalUrl);
+      return;
     }
-  } catch (err) {}
+  } catch (err: any) {
+    logger.warn('Failed to resolve audio asset for redirect', { error: err.message, storageKey: key });
+  }
 
   // 2. Fallback to local storage file
   const filePath = storageProvider.getFilePath(key);
