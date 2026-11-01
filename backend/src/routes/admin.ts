@@ -233,7 +233,8 @@ adminRouter.post(
   upload.single('audio'),
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    if (!req.file) {
+    const uploadedFile = (req as any).file;
+    if (!uploadedFile) {
       res.status(400).json({ error: { code: 'NO_FILE', message: 'No audio file provided' } });
       return;
     }
@@ -245,7 +246,7 @@ adminRouter.post(
         return;
       }
 
-      const mimeType = req.file.mimetype;
+      const mimeType = uploadedFile.mimetype;
       const allowedMimes = ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm'];
       if (!allowedMimes.includes(mimeType)) {
         res.status(400).json({
@@ -262,7 +263,7 @@ adminRouter.post(
       if (mimeType.includes('ogg')) ext = '.ogg';
       if (mimeType.includes('webm')) ext = '.webm';
 
-      const saved = await storageProvider.saveFile(req.file.buffer, ext);
+      const saved = await storageProvider.saveFile(uploadedFile.buffer, ext);
 
       const audioAsset = await AudioAsset.create({
         trackId: track._id,

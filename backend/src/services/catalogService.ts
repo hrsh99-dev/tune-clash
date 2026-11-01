@@ -490,7 +490,7 @@ export async function purgePreloadedDemoTracks(): Promise<number> {
 
 export async function seedPopularCommercialCatalog() {
   const possiblePaths = [
-    path.resolve(process.cwd(), 'apps/server/src/data/songs-catalog.json'),
+    path.resolve(process.cwd(), 'backend/src/data/songs-catalog.json'),
     path.resolve(process.cwd(), 'src/data/songs-catalog.json'),
     path.resolve(process.cwd(), 'dist/data/songs-catalog.json'),
   ];
