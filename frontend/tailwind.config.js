@@ -64,7 +64,7 @@ module.exports = {
         pill: '9999px',
       },
       fontFamily: {
-        sans: ['var(--font-space-grotesk)', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
       },
     },
   },
