@@ -431,7 +431,7 @@ export default function RoomPage() {
         </div>
       )}
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:py-8">
         {/* ROOM TOP HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-6 border-b-2 border-black">
           <div className="flex items-center gap-3">
@@ -467,9 +467,9 @@ export default function RoomPage() {
 
         {/* ----------------- STATE 1: LOBBY ----------------- */}
         {roomStatus === 'lobby' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-6 w-full">
             {/* Player List */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="w-full space-y-6">
               <div className="bg-white border-2 border-black rounded-2xl p-5 shadow-neo">
                 <div className="flex items-center justify-between pb-3 border-b-2 border-black mb-4">
                   <div className="flex items-center gap-2">
@@ -481,7 +481,7 @@ export default function RoomPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
                   {players.map((p) => (
                     <div
                       key={p.playerId}
@@ -566,7 +566,7 @@ export default function RoomPage() {
             </div>
 
             {/* Host Settings & Music Filters Panel */}
-            <div className="space-y-6">
+            <div className="w-full">
               <RoomFilterSettings
                 settings={settings}
                 onUpdateSetting={updateSetting}
@@ -580,7 +580,7 @@ export default function RoomPage() {
 
         {/* ----------------- STATE 2: ACTIVE GAME ROUND ----------------- */}
         {roomStatus === 'in_progress' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-6 w-full">
             <div className="lg:col-span-2 flex flex-col items-center">
               {/* Round Header Bar */}
               {roundPrepare && (
