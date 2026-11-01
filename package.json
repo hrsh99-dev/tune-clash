@@ -1,0 +1,28 @@
+{
+  "name": "tune-clash",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tune Clash - Multiplayer Music Guessing Party Game",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=@tune-clash/server",
+    "dev:web": "npm run dev --workspace=@tune-clash/web",
+    "dev": "npm run dev:server",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed --workspace=@tune-clash/server",
+    "generate-audio": "node scripts/generate-demo-audio.js"
+  },
+  "keywords": [
+    "music",
+    "party-game",
+    "multiplayer",
+    "socketio",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "ISC"
+}

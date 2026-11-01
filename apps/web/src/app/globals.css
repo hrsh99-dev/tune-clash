@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #FAF5EE;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F4EFE6;
+  --color-text-main: #000000;
+  --color-text-secondary: #374151;
+  --color-primary: #FFE600;
+  --color-primary-hover: #FACC15;
+  --color-teal: #2DD4BF;
+  --color-accent: #FFE600;
+  --color-positive: #22C55E;
+  --color-danger: #EF4444;
+  --color-border: #000000;
+}
+
+body {
+  background-color: var(--color-bg);
+  background-image: radial-gradient(#00000014 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--color-text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Neo-Brutalist utility classes */
+@layer components {
+  .neo-box {
+    @apply bg-white border-2 border-black shadow-neo rounded-xl;
+  }
+
+  .neo-box-thick {
+    @apply bg-white border-[3px] border-black shadow-neo-lg rounded-2xl;
+  }
+
+  .neo-box-yellow {
+    @apply bg-neo-yellow border-2 border-black shadow-neo rounded-xl;
+  }
+
+  .neo-btn {
+    @apply inline-flex items-center justify-center font-bold border-2 border-black rounded-lg transition-all shadow-neo active:translate-x-[2px] active:translate-y-[2px] active:shadow-neo-sm;
+  }
+
+  .neo-btn-primary {
+    @apply neo-btn bg-neo-yellow hover:bg-[#FFDF00] text-black;
+  }
+
+  .neo-btn-white {
+    @apply neo-btn bg-white hover:bg-neutral-50 text-black;
+  }
+
+  .neo-btn-green {
+    @apply neo-btn bg-neo-green hover:bg-[#34D399] text-black;
+  }
+
+  .neo-btn-pink {
+    @apply neo-btn bg-neo-pink hover:bg-[#F43F5E] text-white;
+  }
+
+  .neo-btn-cyan {
+    @apply neo-btn bg-neo-cyan hover:bg-[#0EA5E9] text-black;
+  }
+
+  .neo-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 font-bold text-xs uppercase tracking-wide border-2 border-black rounded-full shadow-neo-sm;
+  }
+
+  .neo-sticker {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider border-2 border-dashed border-black bg-white/90 rounded-md;
+  }
+
+  .neo-input {
+    @apply w-full px-4 py-3 bg-white border-2 border-black rounded-xl font-medium text-black placeholder:text-neutral-500 shadow-neo-sm focus:outline-none focus:shadow-neo transition-all;
+  }
+}
+
+/* Accessible focus styling */
+:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Disc rotation animation for audio play */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}

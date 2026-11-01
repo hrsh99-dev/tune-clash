@@ -1,0 +1,14 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: tune_clash_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: tune_clash
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
